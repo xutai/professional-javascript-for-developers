@@ -1,0 +1,340 @@
+<section>
+    <h1>deployment</h1>
+
+    <p>p1059-1065 p1094-1100</p>
+</section>
+<p>anchors</p>
+<ul>
+    <li>
+        <a href="#build-process">build-process</a>
+    </li>
+    <ul>
+        <li>
+            <a href="#file-structure">file-structure</a>
+        </li>
+
+        <li>
+            <a href="#task-runner">task-runner</a>
+        </li>
+
+        <li>
+            <a href="#tree-shaking">tree-shaking</a>
+        </li>
+
+        <li>
+            <a href="#module-bundlers">module-bundlers</a>
+        </li>
+
+    </ul>
+    <li>
+        <a href="#validation">validation</a>
+    </li>
+
+    <li>
+        <a href="#compression">compression</a>
+    </li>
+    <ul>
+        <li>
+            <a href="#code-minification">code-minification</a>
+        </li>
+
+        <li>
+            <a href="#javascript-compilation">javascript-compilation</a>
+        </li>
+
+        <li>
+            <a href="#javascript-transpilation">javascript-transpilation</a>
+        </li>
+
+        <li>
+            <a href="#http-compression">http-compression</a>
+        </li>
+    </ul>
+
+
+
+</ul>
+<p>indexes</p>
+<ul>
+    <li>build-process</li>
+    <ul>
+        <li>file-structure</li>
+        <li>task-runner</li>
+        <li>tree-shaking</li>
+        <li>module-bundlers</li>
+    </ul>
+    <li>validation</li>
+    <li>compression</li>
+    <ul>
+        <li>code-minification</li>
+        <li>javascript-compilation</li>
+        <li>javascript-transpilation</li>
+        <li>http-compression</li>
+    </ul>
+</ul>
+
+<section>
+    <p>Perhaps the most important part of any JavaScript solution is the final deployment to the website or
+        web application in production. You’ve done a lot of work before this point, architecting and optimizing
+        a solution for general consumption. It’s time to move out of the development environment and
+        into the web, where real users can interact with it. Before you do so, however, there are a number of
+        issues that need to be addressed.</p>
+</section>
+
+<section>
+    <h2 id="build-process">build-process</h2>
+    <p>One of the most important things you can do to ready JavaScript code for deployment is to develop
+        some type of build process around it. The typical pattern for developing software is write-compiletest,
+        in that you write the code, compile it, and then run it to ensure that it works. Because JavaScript
+        is not a compiled language, the pattern often becomes write-test, where the code you write is the same
+        code you test in the browser. The problem with this approach is that it’s not optimal; the code you
+        write should not be passed, untouched, to the browser, for the following reasons:</p>
+    <ul>
+        <li>Intellectual property issues—If you put the fully commented source code online, it’s easier
+            for others to figure out what you’re doing, reuse it, and potentially figure out security holes.</li>
+        <li>File size—You write code in a way that makes it easy to read, which is good for maintainability
+            but bad for performance. The browser doesn’t benefit from the extra white space,
+            indentation, or verbose function and variable names.</li>
+        <li>Code organization—The way you organize code for maintainability isn’t necessarily the
+            best way to deliver it to the browser.</li>
+    </ul>
+    <p>compiletest?? compile test</p>
+    <p>untouched adj. 未受影响的；未改变的；未触动过的；不受感动的</p>
+    <p>For these reasons, it’s best to define a build process for your JavaScript files.</p>
+    <section>
+        <h3 id="file-structure">file-structure</h3>
+        <p>A build process starts by defining a logical structure for storing your files in source control. It’s best
+            to avoid having a single file that contains all of your JavaScript. Instead, follow the pattern that
+            is typically taken in object-oriented languages: separate each object or custom type into its own
+            file. Doing so ensures that each file contains just the minimum amount of code, making it easier to
+            make changes without introducing errors. Additionally, in environments that use concurrent source
+            control systems such as Git, CVS, or Subversion, this reduces the risk of conflicts during merge
+            operations.</p>
+
+        <p>Keep in mind that separating your code into multiple files is for maintainability and not for deployment.
+            For deployment, you&rsquo;ll want to combine the source files into one or more rollup files. It&rsquo;s
+            recommended
+            that web applications use the smallest number of JavaScript files possible, because HTTP requests are
+            some of the main performance bottlenecks on the web. Keep in mind that including a JavaScript file via
+            a vanilla &lt;script&gt; tag is a blocking operation that stops all other downloads while the code is
+            downloaded
+            and executed. Therefore, try to logically group JavaScript code into deployment files.</p>
+        <p>rollup n. 归纳；汇总套件</p>
+    </section>
+    <section>
+        <h3 id="task-runner">task-runner</h3>
+        <p>If you’re putting together an application that’s anything more than a few files, you will likely
+            find yourself reaching for a task runner to automate tasks for you. The task runner can perform
+            jobs such as linting, bundling, transpilation, starting a local server, deployment, or any other
+            scripted program.</p>
+        <p>put together ..放在一起；组合；装配</p>
+        <p class="question">transpilation</p>
+        <p>Much of the time, jobs that your task runner will perform are available through command-line
+            interfaces, and therefore your task runner will merely be a tool that aids in grouping and ordering
+            complex command line invocations. In this sense, a task runner in many ways is very similar to a
+            .bashrc file. In other cases, the tools you wish to use in automated tasks will have designated plugins
+            compatible</p>
+        <p>If you’re using NodeJS and npm to package your JavaScript assets, two popular task runners are
+            Grunt (www.gruntjs.com) and Gulp (www.gulpjs.com). Both of these tools are robust task runners
+            whose jobs and instructions are defined inside configuration files written in plain JavaScript.
+            The benefit of using these task runners is that each enjoys an ecosystem of plugins, which allow
+            the tools to directly interface with npm packages. Details of these plugins can be found in the
+            appendixes.</p>
+        <p>appendixes n. 附录；附加物（appendix的复数）</p>
+    </section>
+    <section>
+        <h3 id="tree-shaking">tree-shaking</h3>
+        <p>An increasingly common and extremely effective strategy for reducing payload size is tree shaking. As
+            mentioned in the Modules chapter, using a static module declaration style means that build tools can
+            determine which parts of the codebase depend on other parts. More importantly, tree shaking is also
+            capable of determining which parts of the codebase are not needed at all.</p>
+        <p>Build tools that implement tree shaking acknowledge that module imports are frequently selective
+            and that entire segments of module files can be ignored in the final bundled file. Suppose this is your
+            example application:</p>
+        <p>acknowledge vt. 承认；答谢；报偿；告知已收到</p>
+        <pre><code>
+import { foo } from './utils.js';
+
+console.log(foo);
+export const foo = 'foo';
+export const bar = 'bar'; // unused
+            </code></pre>
+        <p class="question">
+            what does this code mean?
+            is the "foo" in "const foo" refers to the "foo" in "import { foo }"?
+            // Uncaught SyntaxError: redeclaration of import foo
+        <pre><code>
+i guess the author might want to express this
+
+// in utils.js
+export const foo = 'foo';
+export const bar = 'bar'; // unused
+
+// other.js
+import { foo } from './utils.js';
+console.log(foo);
+        </code></pre>
+        </p>
+        <p>Here, the bar export is never used, and static analysis by a build tool can easily determine this is the
+            case. When performing tree shaking, the build tool will completely strip out the bar export from
+            the bundled file. Static analysis also means that the build tool can determine dependencies that are
+            unused and decline to include those as well. By performing tree shaking, the file size savings of the
+            eventual bundle can be enormous.</p>
+        <p>strip out 拿走所有东西; 剥除</p>
+    </section>
+    <section>
+        <h3 id="module-bundlers">module-bundlers</h3>
+        <p>Just because your codebase is written in modules doesn’t mean that it should necessarily be served
+            as modules. Often, JavaScript codebases composed of a large collection of modules will be bundled
+            together at build time and served as one or a few different JavaScript files.</p>
+        <p>serve as 担任…，充当…；起…的作用</p>
+        <p>The module bundler’s job is to identify the landscape of JavaScript dependencies involved in an application,
+            combine them into a monolithic application, make informed decisions about how the modules
+            should be serially organized and concatenated, and generate the output files that will be provided to
+            the browser.</p>
+        <p>monolithic adj. 整体的；巨石的，庞大的；完全统一的</p>
+        <p>serially adv. 连续地；连载地</p>
+        <p>There is an abundance of build tooling that allows you to accomplish such a feat. Webpack, Rollup,
+            and Browserify are just a few of the many options you have to convert a module-based codebase into
+            a universally compatible page script.</p>
+        <p>feat n. 功绩，壮举；技艺表演</p>
+    </section>
+</section>
+<section>
+    <h2 id="validation">validation</h2>
+    <p>Even though IDEs that understand and support JavaScript are starting to appear, most developers still
+        check their syntax by running code in a browser. There are a couple of problems with this approach.
+        First, this validation can’t be easily automated or ported from system to system. Second, aside from
+        syntax errors, problems are encountered only when code is executed, leaving it possible for errors to
+        occur. Several tools are available to help identify potential issues with JavaScript code, the most popular
+        being Douglas Crockford’s JSLint (www.jslint.com) and ESLint (www.eslint.org).</p>
+    <p>Linters look for syntax errors and common coding errors in JavaScript code. Some of the potential
+        issues they surface are as follows:</p>
+    <ul>
+        <li>Use of eval()</li>
+        <li>Use of undeclared variables</li>
+        <li>Omission of semicolons</li>
+        <li>Improper line breaks</li>
+        <li>Incorrect comma usage</li>
+        <li>Omission of braces around statements</li>
+        <li>Omission of break in switch cases</li>
+        <li>Variables being declared twice</li>
+        <li>Use of with</li>
+        <li>Incorrect use of equals (instead of double- or triple-equals)</li>
+        <li>Unreachable code</li>
+    </ul>
+    <p>Adding code validation to your development cycle helps to avoid errors down the road. It’s recommended
+        that developers add some type of code validation to the build process as a way of identifying
+        potential issues before they become errors.</p>
+    <p class="info">A list of JavaScript code validators can be found in Appendix D.</p>
+</section>
+<section>
+    <h2 id="compression">compression</h2>
+    <p>When talking about JavaScript file compression, you’re really talking about two things: code size and
+        wire weight. Code size refers to the number of bytes that need to be parsed by the browser, and wire
+        weight refers to the number of bytes that are actually transmitted from the server to the browser. In
+        the early days of web development, these two numbers were almost always identical because source
+        files were transmitted, unchanged, from server to client. In today’s web, however, the two are rarely
+        equal and realistically should never be.</p>
+    <p>wire n. 电线；金属丝；电报</p>
+    <section>
+        <h3 id="code-minification">code-minification</h3>
+        <p>minification n. 微小；缩小; minifier 缩小器</p>
+        <p>Because JavaScript isn’t compiled into byte code and is transmitted as source code, the source code
+            files usually contain additional information and formatting that have no effect on the browser’s
+            JavaScript interpreter. A JavaScript minifier will perform transformations on your source code to
+            make the file size as small as possible while retaining identical program flow.</p>
+        <p>Comments, extra white space, and long variable or function names improve readability for developers
+            but are unnecessary extra bytes when sent to the browser. A minifier can decrease the file size by
+            performing the following duties:</p>
+        <ul>
+            <li>Remove extra white space (including line breaks)</li>
+            <li>Remove all comments</li>
+            <li>Shorten variable names, function names, and other identifiers</li>
+        </ul>
+        <p>All JavaScript files should be minified with a minification tool before being deployed to a production
+            environment. Adding a step in your build process to compress JavaScript files is an easy way to
+            ensure that this always happens.</p>
+        <div class="info">
+            <p>In the context of web development, the term “minification” is often used
+                interchangeably with “compression.” Doing so can be considered a minor faux
+                pas, as the semantics of each have little overlap.</p>
+            <p>faux pas 失言，失礼，失误</p>
+            <p><small class="keyword">Minification</small> is a process where the minified file size is smaller than the
+                original, but
+                the minified file is still <small class="key">syntactically correct code</small>. Generally,
+                minification is only
+                useful for interpreted languages like JavaScript because languages that are formally
+                compiled into a binary will be minified by the compiler as a matter of course.</p>
+            <p>matter of course 理所当然的事</p>
+            <p><small class="keyword">Compression</small> is distinct from minification in that a compressed file is
+                also smaller
+                than the original but is <small class="key">not syntactically correct code</small>. A compressed file
+                must be
+                uncompressed in order to regain the form of readable code. Compression will result
+                in a smaller file size than minification, as compression algorithms do not have to preserve
+                the syntactical structure of the file and therefore can take additional liberties.</p>
+            <p>liberty n. 自由；许可；冒失</p>
+        </div>
+    </section>
+    <section>
+        <h3 id="javascript-compilation">javascript-compilation</h3>
+        <p>Similar in spirit to minification, code compilation generally refers to the process of taking source code
+            and converting it into a form that is behaviorally identical but uses fewer bytes of JavaScript. This is
+            distinct from minification in that the post-compilation code structure may be different, but it will still
+            exhibit the same behavior as your original source code. Compilers are able to do this by ingesting the
+            entirety of your JavaScript code and performing robust analysis on program flow.</p>
+        <p>ingest vt. 摄取；咽下；吸收；接待</p>
+        <p>Compilation might perform some of the following operations:</p>
+        <ul>
+            <li>Remove unused code</li>
+            <li>Transform parts of code to use more concise syntax</li>
+            <li>Global inlining of function calls, constants, and variables</li>
+        </ul>
+        <p>concise adj. 简明的，简洁的</p>
+        <p>inlining n. 代码嵌入；直接插入</p>
+    </section>
+    <section>
+        <h3 id="javascript-transpilation">javascript-transpilation</h3>
+        <p>The code in your project repository will almost never be the exact code that will execute in your
+            browser. ES6, ES7, and ES8 all introduce wonderful abilities into the ECMAScript specification, but
+            different browsers will fully implement each of their features at different paces.</p>
+        <p>Using transpilation will allow you to wield all the newest syntactical specification features without
+            having to worry about backwards browser compatibility. You can transpile your modern code to an
+            older ECMAScript version—typically ES3 or ES5, depending on your needs—so that your code can
+            work everywhere. Transpilation tools are covered in the appendixes.</p>
+        <p class="info">The terms "transpilation" and "compilation" are often used interchangeably.
+            <dfn class="key">Compilation</dfn> is the process of converting source code written in one language into
+            a different language. <dfn class="key">Transpilation</dfn> is essentially the same process as compilation,
+            but the end language will have a similar level of abstraction as the original language.
+            Therefore, converting ES6/7/8 code into ES3/5 is technically both compilation and
+            transpilation, although transpilation is a more exact term to describe the process.
+        </p>
+    </section>
+    <section>
+        <h3 id="http-compression">http-compression</h3>
+        <p>Wire weight refers to the actual number of bytes sent from the server to the browser. The number of
+            bytes doesn’t necessarily have to be the same as the code size, because of the compression capabilities
+            of both the server and the browser. All of the five major web browsers—Internet Explorer/Edge,
+            Firefox, Safari, Chrome, and Opera—support client-side decompression of resources that they receive.
+            The server is therefore able to compress JavaScript files using server-dependent capabilities. As part
+            of the server response, a header is included indicating that the file has been compressed using a given
+            format. The browser then looks at the header to determine that the file is compressed, and then
+            decompresses it using the appropriate format. The result is that the amount of bytes transferred over
+            the network is significantly less than the original code size.</p>
+        <p>For example, using two modules available for the Apache web server (mod_gzip and mod_deflate)
+            results in savings of around 70 percent of the original file size of JavaScript files. This is largely due
+            to
+            the fact that JavaScript files are plain text and can therefore be compressed very efficiently. Decreasing
+            the wire weight of your files decreases the amount of time it takes to transmit to the browser.
+            Keep in mind that there is a slight trade-off because the server must spend time compressing the files
+            on each request, and the browser must take some time to decompress the files once they arrive. Generally
+            speaking, however, the trade-off is well worth it.</p>
+        <p class="info">
+            Most web servers, both open source and commercial, have some HTTP
+            compression capabilities. Please consult the documentation for your server to
+            determine how to configure compression properly.
+        </p>
+
+    </section>
+</section>

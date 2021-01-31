@@ -1,0 +1,838 @@
+
+        
+
+<section>
+    <h1>Performance</h1>
+</section>
+
+<p>anchors</p>
+<ul>
+    <li><a href="#be-scope-aware">be-scope-aware</a></li>
+    <ul>
+        <li>
+            <a href="#avoid-global-lookups">avoid-global-lookups</a>
+        </li>
+        <li>
+            <a href="#avoid-the-with-statement">avoid-the-with-statement</a>
+        </li>
+    </ul>
+    <li><a href="#choose-the-right-approach">choose-the-right-approach</a></li>
+    <ul>
+        <li><a href="#avoid-unnecessary-property-lookup">avoid-unnecessary-property-lookup</a></li>
+        <li><a href="#optimize-loops">optimize-loops</a></li>
+        <li><a href="#unrolling-loops">unrolling-loops</a></li>
+        <li><a href="#avoid-double-interpretation">avoid-double-interpretation</a></li>
+        <li><a href="#other-performance-considerations">other-performance-considerations</a></li>
+    </ul>
+    <li><a href="#minimize-statement-count">minimize-statement-count</a></li>
+    <ul>
+        <li>
+            <a href="#multiple-variable-declarations">multiple-variable-declarations</a>
+        </li>
+        <li>
+            <a href="#insert-iterative-values">insert-iterative-values</a>
+        </li>
+        <li>
+            <a href="#use-array-and-object-literals">use-array-and-object-literals</a>
+        </li>
+    </ul>
+    <li><a href="#optimize-dom-interactions">optimize-dom-interactions</a></li>
+    <ul>
+        <li>
+            <a href="#minimize-live-updates">minimize-live-updates</a>
+        </li>
+        <li>
+            <a href="#use-innerHTML">use-innerHTML</a>
+        </li>
+        <li>
+            <a href="#use-event-delegation">use-event-delegation</a>
+        </li>
+        <li>
+            <a href="#beware-of-HTMLCollections">beware-of-HTMLCollections</a>
+        </li>
+    </ul>
+</ul>
+
+<p>indexes</p>
+
+<ul>
+    <li>be-scope-aware</li>
+    <ul>
+        <li>avoid-global-lookups</li>
+        <li>avoid-the-with-statement</li>
+    </ul>
+    <li>choose-the-right-approach</li>
+    <ul>
+        <li>avoid-unnecessary-property-lookup</li>
+        <li>optimize-loops</li>
+        <li>unrolling-loops</li>
+        <li>avoid-double-interpretation</li>
+        <li>other-performance-considerations</li>
+    </ul>
+    <li>minimize-statement-count</li>
+    <ul>
+        <li>multiple-variable-declarations</li>
+        <li>insert-iterative-values</li>
+        <li>use-array-and-object-literals</li>
+    </ul>
+    <li>optimize-dom-interactions</li>
+    <ul>
+        <li>minimize-live-updates</li>
+        <li>use-innerHTML</li>
+        <li>use-event-delegation</li>
+        <li>beware-of-HTMLCollections</li>
+    </ul>
+</ul>
+
+<p>unrolling v. （使）展开，铺开；相继出现，连续发生（unroll 的现在分词）</p>
+
+<p>p1047-1059</p>
+
+<section>
+    <p>The amount of JavaScript that developers now write per web page has grown dramatically since
+        the language was first introduced. With that increase came concerns over the runtime execution of
+        JavaScript code. JavaScript was originally an interpreted language, so the speed of execution was
+        significantly slower than it was for compiled languages. Chrome was the first browser to introduce an
+        optimizing engine that compiles JavaScript into native code. Since then, all other major browsers have
+        followed suit and have implemented JavaScript compilation.</p>
+    <p>follow suit 跟着做；学样</p>
+    <p>Even with the move to compiled JavaScript, it’s still possible to write slow code. However, there are
+        some basic patterns that, when followed, ensure the fastest possible execution of code.</p>
+</section>
+<section>
+    <h2 id="be-scope-aware">be-scope-aware</h2>
+    <p>The “Variables, Scope, and Memory” chapter discussed the concept of scopes in JavaScript and how the
+        scope chain works. As the number of scopes in the scope chain increases, so does the amount of time
+        it takes to access variables outside of the current scope. It is always slower to access a global variable
+        than it is to access a local variable, because the scope chain must be traversed. Anything you can do to
+        decrease the amount of time spent traversing the scope chain will increase overall script performance.</p>
+    <section>
+        <h3 id="avoid-global-lookups">avoid-global-lookups</h3>
+        <p>Perhaps the most important thing you can do to improve the performance of your scripts is to be
+            wary of global lookups. Global variables and functions are always more expensive to use than local
+            ones because they involve a scope chain lookup. Consider the following function:</p>
+        <p>wary adj. 谨慎的；机警的；惟恐的；考虑周到的</p>
+        <pre><code>
+function updateUI() {
+    let imgs = document.getElementsByTagName("img");
+    for (let i = 0, len = imgs.length; i &lt; len; i++) {
+        imgs[i].title = '${document.title} image ${i}';
+    }
+    let msg = document.getElementById("msg");
+    msg.innerHTML = "Update complete.";
+}
+            </code></pre>
+        <p>This function may look perfectly fine, but it has three references to the global document object. If
+            there are multiple images on the page, the document reference in the for loop could get executed
+            dozens or hundreds of times, each time requiring a scope chain lookup. By creating a local variable
+            that points to the document object, you can increase the performance of this function by limiting the
+            number of global lookups to just one:</p>
+        <pre><code>
+function updateUI() {
+    let doc = document;
+    let imgs = doc.getElementsByTagName("img");
+    for (let i = 0, len = imgs.length; i &lt; len; i++) {
+        imgs[i].title = '${doc.title} image ${i}';
+    }
+    let msg = doc.getElementById("msg");
+    msg.innerHTML = "Update complete.";
+    }
+               </code></pre>
+        <p>Here, the document object is first stored in the local doc variable. The doc variable is then used in
+            place of document throughout the rest of the code. There’s only one global lookup in this function,
+            compared to the previous version, ensuring that it will run faster.</p>
+        <p class="key">A good rule of thumb is to store any global object that is used more than once in a function as a
+            local variable.</p>
+        <p>rule of thumb 经验法则，拇指规则</p>
+    </section>
+    <section>
+        <h3 id="avoid-the-with-statement">avoid-the-with-statement</h3>
+        <p>The with statement should be avoided where performance is important. Similar to functions, the
+            with statement creates its own scope and therefore increases the length of the scope chain for code
+            executed within it. Code executed within a with statement is guaranteed to run slower than code
+            executing outside because of the extra steps in the scope chain lookup.</p>
+        <p>It is rare that the with statement is required because it is mostly used to eliminate extra characters.
+            In most cases, a local variable can be used to accomplish the same thing without introducing a new
+            scope. Here is an example:</p>
+        <pre><code>
+function updateBody() {
+    with(document.body) {
+        console.log(tagName);
+        innerHTML = "Hello world!";
+    }
+}
+                </code></pre>
+        <p>The with statement in this code enables you to use document.body more easily. The same effect can
+            be achieved by using a local variable, as follows:</p>
+        <pre><code>
+function updateBody() {
+    let body = document.body;
+    console.log(body.tagName);
+    body.innerHTML = "Hello world!";
+}
+            </code></pre>
+        <p>Although this code is slightly longer, it reads better than the with statement, ensuring that you know
+            the object to which tagName and innerHTML belong. This code also saves global lookups by storing
+            document.body in a local variable.</p>
+    </section>
+</section>
+<section>
+    <h2 id="choose-the-right-approach">choose-the-right-approach</h2>
+    <p>As with other languages, part of the performance equation has to do with the algorithm or approach
+        used to solve the problem. Skilled developers know from experience which approaches are likely to
+        achieve better performance results. Many of the techniques and approaches that are typically used in
+        other programming languages can also be used in JavaScript.</p>
+    <section>
+        <h3 id="avoid-unnecessary-property-lookup">avoid-unnecessary-property-lookup</h3>
+        <p>In computer science, the complexity of algorithms is represented using O notation. The simplest, and
+            fastest, algorithm is a constant value or O(1). After that, the algorithms just get more complex and
+            take longer to execute. The following table lists the common types of algorithms found in JavaScript.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>notation</th>
+                    <th>name</th>
+                    <th>description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>O(1)</td>
+                    <td>Constant</td>
+                    <td>Amount of time to execute remains constant no matter the number
+                        of values. Represents simple values and values stored in variables.</td>
+                </tr>
+                <tr>
+                    <td>O(log n)</td>
+                    <td>Logarithmic</td>
+                    <td>Amount of time to execute is related to the number of values, but
+                        each value need not be retrieved for the algorithm to complete.
+                        Example: binary search.</td>
+                </tr>
+                <tr>
+                    <td>O(n)</td>
+                    <td>Linear</td>
+                    <td>Amount of time to execute is directly related to the number of
+                        values. Example: iterating over all items in an array.</td>
+                </tr>
+                <tr>
+                    <td>O(n^2)</td>
+                    <td>Quadratic</td>
+                    <td>Amount of time to execute is related to the number of values such that
+                        each value must be retrieved at least n times. Example: insertion sort.</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>logarithmic adj. 对数的</p>
+        <p>quadratic adj. [数] 二次的</p>
+        <p>Constant values, or O(1), refer to both literals and values that are stored in variables. The notation
+            O(1) indicates that the amount of time necessary to retrieve a constant value remains the same
+            regardless of the number of values. Retrieving a constant value is an extremely efficient process and
+            so is quite fast. Consider the following:</p>
+        <pre><code>
+let value = 5;
+let sum = 10 + value;
+console.log(sum);
+            </code></pre>
+        <p>This code performs four constant value lookups: the number 5, the variable value, the number 10,
+            and the variable sum. The overall complexity of this code is then considered to be O(1).</p>
+        <p>Accessing array items is also an O(1) operation in JavaScript, performing just as well as a simple variable
+            lookup. So the following code is just as efficient as the previous example:</p>
+        <pre><code>
+let values = [5, 10];
+let sum = values[0] + values[1];
+console.log(sum);
+                    </code></pre>
+        <p>Using variables and arrays is more efficient than accessing properties on objects, which is an O(n)
+            operation. Every property lookup on an object takes longer than accessing a variable or array,
+            because a search must be done for a property of that name up the prototype chain. Put simply, the
+            more property lookups there are, the slower the execution time. Consider the following:</p>
+        <pre><code>
+let values = { first: 5, second: 10 };
+let sum = values.first + values.second;
+console.log(sum);
+</code></pre>
+        <p>This code uses two property lookups to calculate the value of sum. Doing one or two property
+            lookups may not result in significant performance issues, but doing hundreds or thousands will definitely
+            slow down execution.</p>
+        <p>Be wary of multiple property lookups to retrieve a single value. For example, consider the following:</p>
+        <pre><code>
+let query = window.location.href.substring(window.location.href.indexOf("?"));
+    </code></pre>
+        <p>In this code, there are six property lookups: three for window.location.href.substring() and
+            three for window.location.href.indexOf(). You can easily identify property lookups by counting
+            the number of dots in the code. This code is especially inefficient because the window.location.
+            href value is being used twice, so the same lookup is done twice.</p>
+        <p>Whenever an object property is being used more than once, store it in a local variable. You’ll still
+            take the initial O(n) hit to access the value the first time, but every subsequent access will be O(1),
+            which more than makes up for it. For example, the previous code can be rewritten as follows:</p>
+        <pre><code>
+let url = window.location.href;
+let query = url.substring(url.indexOf("?"));
+        </code></pre>
+        <p>This version of the code has only four property lookups, a savings of 33 percent over the original.
+            Making this kind of optimization in a large script is likely to lead to larger gains.</p>
+        <p>Generally speaking, any time you can decrease the complexity of an algorithm, you should replace as
+            many property lookups as possible by using local variables to store the values. Furthermore, if you
+            have an option to access something as a numeric array position or a named property (such as with
+            NodeList objects), use the numeric position.</p>
+    </section>
+    <section>
+        <h3 id="optimize-loops">optimize-loops</h3>
+        <p>Loops are one of the most common constructs in programming and, as such, are found frequently
+            in JavaScript. Optimizing these loops is an important part of the performance optimization process
+            because they run the same code repeatedly, automatically increasing execution time. There’s been
+            a great deal of research done into loop optimization for other languages, and these techniques also
+            apply to JavaScript. The basic optimization steps for a loop are as follows:</p>
+        <ol>
+            <li>Simplify the terminal condition—Because the terminal condition is evaluated each time
+                through the loop, it should be as fast as possible. This means avoiding property lookups or
+                other O(n) operations.</li>
+            <li>Simplify the loop body—The body of the loop is executed the most, so make sure it’s as optimized
+                as possible. Make sure there’s no intensive computation being performed that could
+                easily be moved to outside the loop.</li>
+            <li>Use posttest loops—The most commonly used loops are for and while, both of which are
+                pretest loops. Posttest loops, such as do-while, avoid the initial evaluation of the terminal
+                condition and tend to run faster.</li>
+        </ol>
+        <p>pretest n. （学习或做某事前的）预先测试，预先试验 posttest n. 学后测验，后续测试</p>
+        <p class="info">In older browsers, it was more efficient to start loop iterators at their
+            maximum value and decrement them down to 0. This was faster due to the
+            reduced number of instructions that the JavaScript engine would use to check
+            the loop branch condition. In modern browsers, there will be no perceptible
+            performance difference, so you should use an iterator format that is most sensible
+            for the purposes of your code.</p>
+        <p>perceptible adj. 可察觉的；可感知的；看得见的</p>
+        <p>These changes are best illustrated with an example. The following is a basic for loop:</p>
+        <pre><code>
+for (let i = 0; i &lt; values.length; i++) {
+    process(values[i]);
+}
+            </code></pre>
+        <p>This code increments the variable i from 0 up to the total number of items in the values array.
+            Assuming that the order in which the values are processed is irrelevant, the loop can be changed to
+            decrement i instead, as follows:</p>
+        <pre><code>
+for (let i = values.length - 1; i >= 0; i--) {
+    process(values[i]);
+}
+                </code></pre>
+        <p>Here, the variable i is decremented each time through the loop. In the process, the terminal condition
+            is simplified by removing the O(n) call to values.length and replacing it with the O(1) call of
+            0. Because the loop body has only a single statement, it can’t be optimized further. However, the loop
+            itself can be changed into a posttest loop like this:</p>
+        <pre><code>
+let i = values.length-1;
+if (i &gt; -1) {
+    do {
+        process(values[i]);
+    }while(--i &gt;= 0);
+}
+                   </code></pre>
+        <p>The primary optimization here is combining the terminal condition and the decrement operator into
+            a single statement. At this point, any further optimization would have to be done to the process()
+            function itself because the loop is fully optimized.</p>
+        <p>Keep in mind that using a posttest loop works only when you’re certain that there will always be at
+            least one value to process. An empty array causes an unnecessary trip through the loop that a pre-test
+            loop would otherwise avoid.</p>
+    </section>
+    <section>
+        <h3 id="unrolling-loops">unrolling-loops</h3>
+        <p>When the number of times through a loop is finite, it is often faster to eliminate the loop altogether
+            and replace it with multiple function calls. Consider the loop from the previous example. If the length
+            of the array will always be the same, it may be more optimal to simply call process() on each item,
+            as in the following code:</p>
+        <pre><code>
+// eliminated the loop
+process(values[0]);
+process(values[1]);
+process(values[2]);
+            </code></pre>
+        <p>This example assumes that there are only three items in the values array and simply calls process()
+            directly on each item. Unrolling loops in this way eliminates the overhead of setting up a loop and
+            processing a terminal condition, making the code run faster.</p>
+        <p>If the number of iterations through the loop can’t be determined ahead of time, you may want to
+            consider using a technique called Duff’s device. The technique is named after its creator, Tom Duff,
+            who first proposed using it in the C programming language. Jeff Greenberg is credited with implementing
+            Duff’s device in JavaScript. The basic idea of Duff’s device is to unroll a loop into a series
+            of statements by calculating the number of iterations as a multiple of 8. Consider the following
+            code example:</p>
+        <pre><code>
+// credit: Jeff Greenberg for JS implementation of Duff's Device
+// assumes values.length > 0
+let iterations = Math.ceil(values.length / 8);
+let startAt = values.length % 8;
+let i = 0;
+do {
+    switch(startAt) {
+        case 0: process(values[i++]);
+        case 7: process(values[i++]);
+        case 6: process(values[i++]);
+        case 5: process(values[i++]);
+        case 4: process(values[i++]);
+        case 3: process(values[i++]);
+        case 2: process(values[i++]);
+        case 1: process(values[i++]);
+    }
+    startAt = 0;
+} while (--iterations > 0);
+</code></pre>
+        <script>
+    // const startAt = 0
+    // let i = 0
+    // switch(startAt){
+    //     case 0: console.log(i++);  // 0
+    //     case 7: console.log(i++);  // 1
+    // }
+        </script>
+        <p>This implementation of Duff’s device starts by calculating how many iterations through the loop need
+            to take place by dividing the total number of items in the values array by 8. The ceiling function
+            is then used to ensure that the result is a whole number. The startAt variable holds the number of
+            items that wouldn’t be processed if the iterations were based solely on dividing by 8. When the loop
+            executes for the first time, the startAt variable is checked to see how many extra calls should be
+            made. For instance, if there are 10 values in the array, startAt would be equal to 2, so process()
+            would be called only twice the first time through the loop. At the bottom of the loop, startAt is reset
+            to 0 so that each subsequent time through the loop results in eight calls to process(). This unrolling
+            speeds up processing of large data sets.</p>
+        <p>The book Speed Up Your Site by Andrew B. King (New Riders, 2003) proposed an even faster Duff’s
+            device technique that separated the do-while loop into two separate loops. Here’s an example:</p>
+        <pre><code>
+// credit: Speed Up Your Site (New Riders, 2003)
+let iterations = Math.floor(values.length / 8);
+let leftover = values.length % 8;
+let i = 0;
+if (leftover > 0) {
+    do {
+        process(values[i++]);
+    } while (--leftover > 0);
+}
+do {
+    process(values[i++]);
+    process(values[i++]);
+    process(values[i++]);
+    process(values[i++]);
+    process(values[i++]);
+    process(values[i++]);
+    process(values[i++]);
+    process(values[i++]);
+} while (--iterations > 0);
+        </code></pre>
+        <p>In this implementation, the leftover count that wouldn’t have been handled in the loop when simply
+            dividing by 8 is handled in an initial loop. Once those extra items are processed, execution continues
+            in the main loop that calls process() eight times. This approach is almost 40 percent faster than the
+            original Duff’s device implementation.</p>
+        <p>Unrolling loops can yield big savings for large data sets but may not be worth the extra effort for
+            small data sets. The trade-off is that it takes more code to accomplish the same task, which is typically
+            not worth it when large data sets aren’t being processed.</p>
+    </section>
+    <section>
+        <h3 id="avoid-double-interpretation">avoid-double-interpretation</h3>
+        <p>Double interpretation penalties exist when JavaScript code tries to interpret JavaScript code. This
+            situation arises when using the eval() function or the Function constructor or when using set-
+            Timeout() with a string argument. Here are some examples:</p>
+        <pre><code>
+// evaluate some code - AVOID!!
+eval("console.log('Hello world!')");
+// create a new function - AVOID!!
+let sayHi = new Function("console.log('Hello world!')");
+// set a timeout - AVOID!!
+setTimeout("console.log('Hello world!')", 500);
+            </code></pre>
+        <p>In each of these instances, a string containing JavaScript code has to be interpreted. This can’t be done
+            during the initial parsing phase because the code is contained in a string, which means a new parser
+            has to be started while the JavaScript code is running to parse the new code. Instantiating a new
+            parser has considerable overhead, so the code runs slower than if it were included natively.</p>
+        <p>There are workarounds for all of these instances. It’s rare that eval() is absolutely necessary, so try
+            to avoid it whenever possible. In this case, the code could just be included inline. For the Function
+            constructor, the code can be rewritten as a regular function quite easily, and the setTimeout() call
+            can pass in a function as the first argument. Here are some examples:</p>
+        <pre><code>
+// fixed
+console.log('Hello world!');
+// create a new function - fixed
+let sayHi = function() {
+    console.log('Hello world!');
+};
+// set a timeout - fixed
+setTimeout(function() {
+    console.log('Hello world!');
+}, 500);
+</code></pre>
+        <p>To increase the performance of your code, avoid using strings that need to be interpreted as
+            JavaScript
+            whenever possible.</p>
+    </section>
+    <section>
+        <h3 id="other-performance-considerations">other-performance-considerations</h3>
+        <p>There are a few other things to consider when evaluating the performance of your script. The following
+            aren’t major issues, but they can make a difference when used frequently:</p>
+        <ul>
+            <li>Native methods are fast—Whenever possible, use a native method instead of one written in
+                JavaScript. Native methods are written in compiled languages such as C or C++ and thus
+                run much faster than those in JavaScript. The most often forgotten methods in JavaScript
+                are the complex mathematical operations available on the Math object; these methods
+                always run faster than any JavaScript equivalent for calculating sine, cosine, and so on.</li>
+            <li>Switch statements are fast—If you have a complex series of if-else statements, converting it to
+                a single switch statement can result in faster code. You can further improve the performance of
+                switch statements by organizing the cases in the order of most likely to least likely.</li>
+            <li class="confusing">Bitwise operators are fast—When performing mathematical operations, bitwise operations
+                are always faster than any Boolean or numeric arithmetic. Selectively replacing arithmetic
+                operations with bitwise operations can greatly improve the performance of complex calculations.
+                Operations such as modulus, logical AND, and logical OR are good candidates to be
+                replaced with bitwise operations.</li>
+        </ul>
+        <script>
+            // 5 00000000000000000000000000000101
+            // 3 00000000000000000000000000000011
+            // ---------------------------------1
+            // ???
+            // 101 and 011, duplicated position at units digit
+            // --00000000000000000000000000000111
+            // -------------------------------101
+            // -------------------------------011
+            // console.debug(
+            //     "Bitwise AND",
+            //     "Returns a one in each bit position for which the corresponding bits of both operands are ones.",
+            //     5 & 3,
+            //     "Bitwise OR",
+            //     "Returns a zero in each bit position for which the corresponding bits of both operands are zeros.",
+            //     5 | 3
+            // )
+            // console.info(
+            //     "logical AND",
+            //     5 && 3
+            // )
+        </script>
+        <p>bitwise adj. （计算机）逐位，按位</p>
+    </section>
+</section>
+<section>
+    <h2 id="minimize-statement-count">minimize-statement-count</h2>
+    <p>The number of statements in JavaScript code affects the speed with which the operations are performed.
+        A single statement can complete multiple operations faster than multiple statements each
+        performing a single operation. The task, then, is to seek out statements that can be combined in order
+        to decrease the execution time of the overall script. To do so, you can look for several patterns.</p>
+    <p>seek out 找出；搜出；想获得</p>
+    <section>
+        <h3 id="multiple-variable-declarations">multiple-variable-declarations</h3>
+        <p>Multiple Variable Declarations
+            One area in which developers tend to create too many statements is in the declaration of multiple
+            variables. It’s quite common to see code declaring multiple variables using multiple let statements,
+            such as the following:</p>
+        <pre><code>
+// four statements - wasteful
+let count = 5;
+let color = "blue";
+let values = [1,2,3];
+let now = new Date();
+            </code></pre>
+        <p>In strongly typed languages, variables of different data types must be declared in separate statements.
+            In JavaScript, however, all variables can be declared using a single let statement. The preceding code
+            can be rewritten as follows:</p>
+        <pre><code>
+// one statement
+let count = 5,
+color = "blue",
+values = [1,2,3],
+now = new Date();
+                </code></pre>
+        <p>Here, the variable declarations use a single let statement and are separated by commas. This is an
+            optimization that is easy to make in most cases and performs much faster than declaring each variable
+            separately.</p>
+    </section>
+    <section>
+        <h3 id="insert-iterative-values">insert-iterative-values</h3>
+        <p>Any time you are using an iterative value (that is, a value that is being incremented or decremented at
+            various locations), combine statements whenever possible. Consider the following code snippet:</p>
+        <pre><code>
+let name = values[i];
+i++;
+            </code></pre>
+        <p>Each of the two preceding statements has a single purpose: the first retrieves a value from values and
+            stores it in name; the second increments the variable i. These can be combined into a single statement
+            by inserting the iterative value into the first statement, as shown here:</p>
+        <pre><code>
+let name = values[i++];
+                </code></pre>
+        <p>This single statement accomplishes the same thing as the previous two statements. Because the increment
+            operator is postfix, the value of i isn’t incremented until after the rest of the statement executes.
+            Whenever you have a similar situation, try to insert the iterative value into the last statement
+            that uses it.</p>
+    </section>
+    <section>
+        <h3 id="use-array-and-object-literals">use-array-and-object-literals</h3>
+        <p>Throughout this book, you’ve seen two ways of creating arrays and objects: using a constructor or using
+            a literal. Using constructors always leads to more statements than are necessary to insert items or define
+            properties, whereas literals complete all operations in a single statement. Consider the following example:
+        </p>
+        <pre><code>
+// four statements to create and initialize array - wasteful
+let values = new Array();
+values[0] = 123;
+values[1] = 456;
+values[2] = 789;
+// four statements to create and initialize object - wasteful
+let person = new Object();
+person.name = "Nicholas";
+person.age = 29;
+person.sayName = function() {
+    console.log(this.name);
+};
+            </code></pre>
+        <p>In this code, an array and an object are created and initialized. Each requires four statements: one to
+            call the constructor and three to assign data. These can easily be converted to use literals as follows:</p>
+        <pre><code>
+// one statement to create and initialize array
+let values = [123, 456, 789];
+// one statement to create and initialize object
+let person = {
+    name: "Nicholas",
+    age: 29,
+    sayName() {
+        console.log(this.name);
+        }
+};
+                </code></pre>
+        <p>This rewritten code contains only two statements: one to create and initialize the array, and one to
+            create and initialize the object. What previously took eight statements now takes only two, reducing
+            the statement count by 75 percent. The value of these optimizations is even greater in codebases that
+            contain thousands of lines of JavaScript.</p>
+        <p>Whenever possible, replace your array and object declarations with their literal representation to
+            eliminate unnecessary statements.</p>
+        <p class="info">Reducing statement count in your codebase is a good goal, but not an
+            absolute law. It is possible to condense too much logic into a single statement for
+            it to be easily comprehensible.</p>
+    </section>
+</section>
+<section>
+    <h2 id="optimize-dom-interactions">optimize-dom-interactions</h2>
+    <p>Of all the parts of JavaScript, the DOM is without a doubt the slowest part. DOM manipulations and
+        interactions take a large amount of time because they often require rerendering all or part of the page.
+        Furthermore, seemingly trivial operations can take longer to execute because the DOM manages so
+        much information. Understanding how to optimize interactions with the DOM can greatly increase
+        the speed with which scripts complete.</p>
+    <p>trivial adj. 不重要的，琐碎的；琐细的</p>
+    <p>incur v. 招致，遭受；引致，带来……</p>
+    <section>
+        <h3 id="minimize-live-updates">minimize-live-updates</h3>
+        <p>Whenever you access part of the DOM that is part of the displayed page, you are performing a live
+            update. Live updates are so called because they involve immediate (live) updates of the page’s display
+            to the user. Every change, whether it be inserting a single character or removing an entire section,
+            incurs a performance penalty as the browser recalculates thousands of measurements to perform the
+            update. The more live updates you perform, the longer it will take for the code to completely execute.
+            The fewer live updates necessary to complete an operation, the faster the code will be. Consider the
+            following example:</p>
+        <pre><code>
+let list = document.getElementById("myList"),
+    item;
+for (let i = 0; i &lt; 10; i++) {
+    item = document.createElement("li");
+    list.appendChild(item);
+    item.appendChild(document.createTextNode('Item ${i}'));
+}
+            </code></pre>
+        <p>This code adds ten items to a list. For each item that is added, there are two live updates: one to add
+            the &lt;li&gt; element and another to add the text node to it. Because ten items are being added,
+            that&rsquo;s a
+            total of twenty live updates to complete this operation.</p>
+        <p>To fix this performance bottleneck, you need to reduce the number of live updates. There are generally
+            two approaches to this.
+            <small class="confusing">The first is to remove the list from the page, perform the updates, and
+                then reinsert the list into the same position. This approach is not ideal because it can cause
+                unnecessary
+                flickering as the page updates each time. </small>
+            <small class="unfamiliar"> The second approach is to use a document fragment to
+                build up the DOM structure and then add it to the list element. This approach avoids live updates
+                and page flickering.</small>
+            Consider the following:</p>
+        <p class="question">
+            flickering???
+            remove the list? the ul element? or remove the node then insert a new node? or change the node textContent?
+        </p>
+        <pre><code>
+let list = document.getElementById("myList"),
+    fragment = document.createDocumentFragment(),
+    item;
+for (let i = 0; i &lt; 10; i++) {
+    item = document.createElement("li");
+    fragment.appendChild(item);
+    item.appendChild(document.createTextNode("Item " + i));
+}
+list.appendChild(fragment);
+                    </code></pre>
+        <p>There is only one live update in this example, and it occurs after all items have been created. The
+            document fragment is used as a temporary placeholder for the newly created items. All items are
+            then added to the list, using appendChild(). Remember, when a document fragment is passed in
+            to appendChild(), all of the children of the fragment are appended to the parent, but the fragment
+            itself is never added.</p>
+        <p>Whenever updates to the DOM are necessary, consider using a document fragment to build up the
+            DOM structure before adding it to the live document.</p>
+        <div id="wrapper-minimize-live-updates">
+            <ul id="list-minimize-live-updates-m1"></ul>
+            <ul id="list-minimize-live-updates-m2"></ul>
+        </div>
+        <script>
+            // let wrapper = document.getElementById("wrapper-minimize-live-updates"),
+            //     list1 = document.getElementById("list-minimize-live-updates-m1"),
+            //     list2 = document.getElementById("list-minimize-live-updates-m2"),
+            //     fragment = document.createDocumentFragment(),
+            //     item1,
+            //     item2;
+
+            // for (let i = 0; i < 3; i++) {
+            //     item1 = document.createElement("li");
+            //     list1.appendChild(item1);
+            //     item1.appendChild(document.createTextNode(`Item ${i}`))
+            // }
+
+            // for (let i = 0; i < 3; i++) {
+            //     item2 = document.createElement("li");
+            //     fragment.appendChild(item2);
+            //     item2.appendChild(document.createTextNode("Item " + i));
+            // }
+            // list2.appendChild(fragment);
+
+            // let li12 = document.querySelector('ul[id^="list-minimize-live-updates-m1"]').children[1]
+            // let li22 = document.querySelector('ul[id^="list-minimize-live-updates-m2"]').children[1]
+            // setTimeout(() => {
+            //     // list1.parentNode.removeChild(list1)
+            //     // list2.parentNode.removeChild(list2)
+
+            //     list1.children[1].childNodes[0].remove()
+            //     list2.children[1].childNodes[0].remove()
+            // }, 1000)
+            // setTimeout(() => {
+            //     list1.children[1].appendChild(document.createTextNode("new textnode"))
+            //     wrapper.prepend(list1)
+
+            //     list2.children[1].appendChild(document.createTextNode("new textnode"))
+            // }, 2000)
+            // setTimeout(() => {
+            //     let l1 = document.createElement("li"),
+            //         l2 = document.createElement("li");
+            //     l1.appendChild(document.createTextNode("new textnode 2"))
+            //     l2.appendChild(document.createTextNode("new textnode 2"))
+            //     list1.appendChild(l1)
+            //     list2.appendChild(l2)
+            // }, 3000)
+            // setTimeout(() => {
+            //     let l2 = document.createElement("li");
+            //     l2.appendChild(document.createTextNode("new textnode 3"))
+            //     fragment.appendChild(l2)
+
+            //     // li12.textNode = 'fragment updates textNode'
+            //     // li12.textContent = 'fragment updates textContent'
+            //     // li22.textNode = 'fragment updates textNode'
+            //     // li22.textContent = 'fragment updates textContent'
+            // }, 4000)
+
+        </script>
+    </section>
+    <section>
+        <h3 id="use-innerHTML">use-innerHTML</h3>
+        <p>There are two ways to create new DOM nodes on the page: using DOM methods such as createElement()
+            and appendChild(), and using innerHTML. For small DOM changes, the two techniques
+            perform roughly the same. For large DOM changes, however, using innerHTML is much faster than
+            creating the same DOM structure using standard DOM methods.</p>
+        <p>
+            <small class="unfamiliar">
+                When innerHTML is set to a value, an HTML parser is created behind the scenes, and the DOM structure
+            is created using the native DOM calls rather than JavaScript-based DOM calls. The native methods
+            execute much faster because they are compiled rather than interpreted. 
+            </small>
+            The previous example can
+            be rewritten to use innerHTML like this:</p>
+        <pre><code>
+let list = document.getElementById(&quot;myList&quot;),
+html = &quot;&quot;;
+for (let i = 0; i &lt; 10; i++) {
+    html += &apos;&lt;li&gt;Item ${i}&lt;/li&gt;&apos;;
+}
+list.innerHTML = html;
+                </code></pre>
+        <p>This code constructs an HTML string and then assigns it to list.innerHTML, which creates the
+            appropriate DOM structure. Although there is always a small performance hit for string concatenation,
+            this technique still performs faster than performing multiple DOM manipulations.</p>
+        <p>The key to using innerHTML, as with other DOM operations, is to minimize the number of times it is
+            called. For instance, the following code uses innerHTML too much for this operation:</p>
+        <pre><code>
+let list = document.getElementById(&quot;myList&quot;);
+for (let i = 0; i &lt; 10; i++) {
+    list.innerHTML += &apos;&lt;li&gt;Item ${i}&lt;/li&gt;&apos;; // AVOID!!!
+}
+                        </code></pre>
+        <p>The problem with this code is that innerHTML is called each time through the loop, which is incredibly
+            inefficient. A call to innerHTML is, in fact, a live update and should be treated as such. It’s far
+            faster to build up a string and call innerHTML once than it is to call innerHTML multiple times.</p>
+        <p class="info">innerHTML may offer superior performance, but it exposes an enormous
+            XSS attack surface. Any time it is used to interpolate data that you do not
+            explicitly control, an attacker can inject executable code. Use with caution.</p>
+            <p>interpolate vt. 篡改；插入新语句</p>
+    </section>
+    <section>
+        <h3 id="use-event-delegation">use-event-delegation</h3>
+        <p>Most web applications make extensive use of event handlers for user interaction. There is a direct
+            relationship
+            between the number of event handlers on a page and the speed with which the page responds
+            to user interaction. To mitigate these penalties, you should use event delegation whenever possible.</p>
+        <p>Event delegation takes advantage of events that bubble. Any event that bubbles can be handled
+            not just at the event target but also at any of the target’s ancestors. Using this knowledge, you can
+            attach event handlers at a high level that are responsible for handling events for multiple targets.
+            Whenever possible, attach an event handler at the document level that can handle events for the
+            entire page.</p>
+    </section>
+    <section>
+        <h3 id="beware-of-HTMLCollections">beware-of-HTMLCollections</h3>
+        <p>The pitfalls of HTMLCollection objects have been discussed throughout this book because they are a
+            big performance sink for web applications. Keep in mind that any time you access an HTMLCollection,
+            whether it be a property or a method, you are performing a query on the document, and that
+            querying is quite expensive. Minimizing the number of times you access an HTMLCollection can
+            greatly improve the performance of a script.</p>
+            <p>pitfall n. 陷阱，圈套；缺陷；诱惑</p>
+            <p>sink n. 洗涤槽，水槽；洼地；污水坑；</p>
+        <p>Perhaps the most important area in which to optimize HTMLCollection access is loops. Moving the
+            length calculation into the initialization portion of a for loop was discussed previously. Now consider
+            this example:</p>
+        <pre><code>
+let images = document.getElementsByTagName(&quot;img&quot;);
+for (let i = 0, len = images.length; i &lt; len; i++) {
+    // process
+}
+                </code></pre>
+        <p>The key here is that the length is stored in the len variable instead of constantly accessing the
+            length property of the HTMLCollection. When using an HTMLCollection in a loop, you should make your next
+            step a retrieval of a reference to the item you’ll be using, as shown here, in order to
+            avoid calling the HTMLCollection multiple times in the loop body:</p>
+        <pre><code>
+let images = document.getElementsByTagName("img"),
+    image;
+for (let i = 0, len=images.length; i &lt; len; i++) {
+    image = images[i];
+// process
+}
+                    </code></pre>
+        <p>This code adds the image variable, which stores the current image. Once this is complete, there
+            should be no further reason to access the images HTMLCollection inside the loop.</p>
+        <p>When writing JavaScript, it’s important to realize when HTMLCollection objects are being returned so you
+            can minimize accessing them. An HTMLCollection object is returned when any of the following occurs:</p>
+        <ul>
+            <li>A call to getElementsByTagName() is made.</li>
+            <li>The childNodes property of an element is retrieved.</li>
+            <li>The attributes property of an element is retrieved.</li>
+            <li>A special collection is accessed, such as document.forms, document.images, and so forth.</li>
+        </ul>
+        <script>
+            // console.debug(
+            //     document.getElementsByTagName('ul'), // HTMLCollection
+            //     document.querySelector('body').childNodes, // NodeList
+            //     document.querySelector('body').attributes, // NamedNodeMap
+            //     document.links // HTMLCollection
+            // )
+        </script>
+        <p>Understanding when you’re using HTMLCollection objects and making sure you’re using them
+            appropriately can greatly speed up code execution.</p>
+    </section>
+</section>
+
+
+

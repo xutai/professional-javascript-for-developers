@@ -1,0 +1,28 @@
+> this page is not finished yet!
+
+- syntax
+- keywords-and-reserved-words-variables
+- data-types
+- operators
+- statements
+- functions
+- summary
+- syntax
+- keywords-and-reserved-words-variables
+- data-types
+    - the-typeof-operator
+    - undefined-type
+    - the-null-type
+    - the-boolean-type
+    - the-number-type
+        - floating-point-values
+        - range-of-values
+        - NaN
+        - number-conversions
+    - the-string-type
+    - the-symbol-type
+    - the-object-type
+- operators
+- statements
+- functions
+- summary
